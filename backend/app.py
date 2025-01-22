@@ -1,4 +1,5 @@
 import json
+import uuid
 from flask import Flask, Response, jsonify, make_response, request, stream_with_context
 from utils.chat import ChatBot
 import logging
@@ -7,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-chatbot = ChatBot()
+
 
 def _build_cors_preflight_response():
     response = make_response()
@@ -20,6 +21,12 @@ def _corsify_actual_response(response):
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
+@app.before_request
+def execute_before_request():
+    global session_id, chatbot
+    session_id = str(uuid.uuid4())
+    chatbot = ChatBot()
+
 @app.route('/api/send_message', methods=['POST', 'OPTIONS'])
 def send_message():
     if request.method == 'OPTIONS':
@@ -27,12 +34,17 @@ def send_message():
 
     data = request.get_json()
     prompt = data.get('prompt')
+    chatbot.chat_history.add_user_message(message=prompt)
     
     if not prompt:
         return jsonify({"error": "Missing 'prompt' parameter"}), 400
 
     try:
         response = chatbot.invoke(prompt)
+        chatbot.chat_history.add_ai_message(message=response)
+        
+        logger.info(f"Database messages: {chatbot.chat_history.messages}")
+        
         return _corsify_actual_response(make_response(jsonify({"response": response})))
     except ValueError as e:
         logger.error(f"Error: {e}")
