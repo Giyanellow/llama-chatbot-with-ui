@@ -25,7 +25,7 @@ def _corsify_actual_response(response):
 def execute_before_request():
     global session_id, chatbot
     session_id = str(uuid.uuid4())
-    chatbot = ChatBot()
+    chatbot = ChatBot(session_id)
 
 @app.route('/api/send_message', methods=['POST', 'OPTIONS'])
 def send_message():
@@ -33,7 +33,7 @@ def send_message():
         return _build_cors_preflight_response()
 
     data = request.get_json()
-    prompt = data.get('prompt')
+    prompt = data.get('message')
     chatbot.chat_history.add_user_message(message=prompt)
     
     if not prompt:
@@ -45,7 +45,7 @@ def send_message():
         
         logger.info(f"Database messages: {chatbot.chat_history.messages}")
         
-        return _corsify_actual_response(make_response(jsonify({"response": response})))
+        return _corsify_actual_response(make_response(jsonify({"message": response})))
     except ValueError as e:
         logger.error(f"Error: {e}")
         return jsonify({"error": str(e)}), 500
