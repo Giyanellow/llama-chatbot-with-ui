@@ -13,7 +13,7 @@ import { motion } from "framer-motion"
 
 export default function Chat() {
   const [input, setInput] = useState("")
-  const [isReplying, setIsReplying] = useState(true)
+  const [isReplying, setIsReplying] = useState(false)
   const [messages, setMessages] = useState(() => {
     const savedMessages = localStorage.getItem("chatMessages")
     return savedMessages ? JSON.parse(savedMessages) : []
