@@ -39,22 +39,26 @@ export default function Chat() {
     fetchMessageHistory()
   }, [])
 
+  const handlePromptClick = (prompt: string) => {
+    setInput(prompt)
+  }
+
   const examplePrompts = [
     {
-      title: "What are the advantages",
-      subtitle: "of using Next.js?",
+      title: "Who are the characters",
+      subtitle: "of the Harry Potter Books?",
     },
     {
-      title: "Write code to",
-      subtitle: "demonstrate dijkstra's algorithm",
+      title: "What are the differences",
+      subtitle: "of the Harry Potter books and movies?",
     },
     {
-      title: "Help me write an essay",
-      subtitle: "about silicon valley",
+      title: "Who are the main characters",
+      subtitle: "of the Harry Potter books?",
     },
     {
-      title: "What is the weather",
-      subtitle: "in San Francisco?",
+      title: "What happened",
+      subtitle: "after the Harry Potter books?",
     },
   ]
 
