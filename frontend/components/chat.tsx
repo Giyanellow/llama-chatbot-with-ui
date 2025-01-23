@@ -20,7 +20,22 @@ export default function Chat() {
 
   const apiClient = axios.create({
     baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
+    withCredentials: true, // Ensure cookies are included in requests
   })
+
+  useEffect(() => {
+    const fetchMessageHistory = async () => {
+      try {
+        const response = await apiClient.get("api/get_message_history")
+        console.log('Response of request', response)
+        setMessages(response.data.messages)
+      } catch (error) {
+        console.error("Error fetching message history:", error)
+      }
+    }
+
+    fetchMessageHistory()
+  }, [])
 
   const examplePrompts = [
     {
@@ -40,23 +55,6 @@ export default function Chat() {
       subtitle: "in San Francisco?",
     },
   ]
-
-  // Load messages from localStorage when the component mounts
-  useEffect(() => {
-    const savedMessages = localStorage.getItem("chatMessages")
-    if (savedMessages) {
-      setMessages(JSON.parse(savedMessages))
-    }
-  }, [])
-
-  // Save messages to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem("chatMessages", JSON.stringify(messages))
-  }, [messages])
-
-  const handlePromptClick = (prompt: string) => {
-    setInput(prompt)
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
