@@ -9,9 +9,11 @@ import { ModeToggle } from "./mode-toggle"
 import { Input } from "@/components/ui/input"
 import axios from "axios"
 import MarkdownRenderer from "./markdown-renderer"
+import { motion } from "framer-motion"
 
 export default function Chat() {
   const [input, setInput] = useState("")
+  const [isReplying, setIsReplying] = useState(true)
   const [messages, setMessages] = useState(() => {
     const savedMessages = localStorage.getItem("chatMessages")
     return savedMessages ? JSON.parse(savedMessages) : []
@@ -27,7 +29,7 @@ export default function Chat() {
     const fetchMessageHistory = async () => {
       try {
         const response = await apiClient.get("api/get_message_history")
-        console.log('Response of request', response)
+        console.log("Response of request", response)
         setMessages(response.data.messages)
       } catch (error) {
         console.error("Error fetching message history:", error)
@@ -64,13 +66,14 @@ export default function Chat() {
         { id: prevMessages.length, role: "user", content: input },
       ])
       setInput("")
+      setIsReplying(true)
 
       try {
         const response = await apiClient.post("api/send_message", {
           message: input,
         })
 
-        console.log(response)
+        setIsReplying(false)
 
         setMessages((prevMessages) => [
           ...prevMessages,
@@ -103,6 +106,33 @@ export default function Chat() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value)
   }
+
+  const dotVariants = {
+    animate: (i) => ({
+      opacity: [0, 1, 0],
+      transition: {
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut",
+        delay: i * 0.3
+      },
+    }),
+  }
+
+  const AnimatedDots = () => (
+    <div className="flex p-4 rounded-lg w-fit space-x-2 bg-secondary text-secondary-foreground ml-3">
+      {[...Array(3)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="w-2 h-2 bg-secondary-foreground rounded-full"
+          variants={dotVariants}
+          animate="animate"
+          custom={i}
+          style={{ animationDelay: `${i * 0.2}s` }}
+        />
+      ))}
+    </div>
+  )
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground p-4 md:p-8">
@@ -144,7 +174,7 @@ export default function Chat() {
             <div
               key={message.id}
               className={cn(
-                "flex p-4 rounded-lg w-fit max-w-[70%]",
+                "flex p-4 rounded-lg w-fit max-w-[70%] whitespace-pre-wrap",
                 message.role === "user"
                   ? "bg-primary text-primary-foreground ml-auto mr-3"
                   : "bg-secondary text-secondary-foreground ml-3"
@@ -154,6 +184,11 @@ export default function Chat() {
             </div>
           ))}
           <div ref={messagesEndRef} />
+          {isReplying && (
+            <div className="flex p-4 rounded-lg w-fit">
+              <AnimatedDots />
+            </div>
+          )}
         </div>
 
         {/* Example Prompts Grid */}
