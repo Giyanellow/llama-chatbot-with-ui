@@ -1,5 +1,19 @@
 # Self-Hosting an LLM with Ollama and Llama 3.2
 
+## About
+
+This project provides a comprehensive template for self-hosting a Large Language Model (LLM) using Ollama with Llama 3.2. It is designed for developers who want to build and deploy AI-powered applications with a modern web interface and a scalable backend.
+
+The project includes:
+
+- A Next.js frontend with Shadcn for a sleek and responsive UI.
+
+- A Flask backend that leverages LangChain for efficient LLM function handling.
+
+- Session-based chat history, allowing users to maintain context across multiple interactions.
+
+- Modular architecture, making it easy to extend and customize for different use cases.
+
 ## Introduction
 
 This repository provides a project template for self-hosting a Large Language Model (LLM) using Ollama with Llama 3.2. The project includes a React frontend built with Next.js and Shadcn, and a Flask backend leveraging LangChain for enhanced LLM function handling.
