@@ -1,6 +1,6 @@
 "use client"
 import { useState, useRef, useEffect } from "react"
-import { Paperclip, ArrowUp } from "lucide-react"
+import { Paperclip, ArrowUp, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SiOllama } from "react-icons/si"
 import { RiNextjsFill } from "react-icons/ri"
@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input"
 import axios from "axios"
 import MarkdownRenderer from "./markdown-renderer"
 import { motion } from "framer-motion"
+import Cookies from "universal-cookie"
+
+const cookies = new Cookies()
 
 export default function Chat() {
   const [input, setInput] = useState("")
@@ -19,28 +22,55 @@ export default function Chat() {
     return savedMessages ? JSON.parse(savedMessages) : []
   })
   const messagesEndRef = useRef(null)
+  const [isMounted, setIsMounted] = useState(false)
+  const [sessionID, setSessionID] = useState("")
 
   const apiClient = axios.create({
     baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
     withCredentials: true, // Ensure cookies are included in requests
+    headers: {
+      "Content-Type": "application/json",
+    },
   })
 
-  useEffect(() => {
-    const fetchMessageHistory = async () => {
-      try {
-        const response = await apiClient.get("api/get_message_history")
-        console.log("Response of request", response)
-        setMessages(response.data.messages)
-      } catch (error) {
-        console.error("Error fetching message history:", error)
+  const handleNewSession = async () => {
+    try {
+      const response = await apiClient.get("api/get_session_id")
+      console.log(
+        "Received new session ID from backend",
+        response.data.session_id
+      )
+      // Set session_id cookie
+      const sessionId = response.data.session_id
+      if (sessionId) {
+        cookies.set("session_id", sessionId, { path: "/" })
+        setSessionID(sessionId)
+        setMessages([])
       }
+    } catch (error) {
+      console.error("Error fetching new session ID:", error)
     }
+  }
 
-    fetchMessageHistory()
-  }, [])
+  const handleOldSession = async () => {
+    try {
+      const response = await apiClient.post("api/get_message_history", {
+        session_id: cookies.get("session_id"),
+      })
+      console.log("Response of request", response)
+      setMessages(response.data.messages)
+    } catch (error) {
+      console.error("Error fetching message history:", error)
+    }
+  }
 
-  const handlePromptClick = (prompt: string) => {
-    setInput(prompt)
+  if (!isMounted) {
+    if (!cookies.get("session_id")) {
+      handleNewSession()
+    } else {
+      handleOldSession()
+    }
+    setIsMounted(true)
   }
 
   const examplePrompts = [
@@ -75,6 +105,7 @@ export default function Chat() {
       try {
         const response = await apiClient.post("api/send_message", {
           message: input,
+          session_id: cookies.get("session_id"),
         })
 
         setIsReplying(false)
@@ -118,7 +149,7 @@ export default function Chat() {
         duration: 2,
         repeat: Infinity,
         ease: "easeInOut",
-        delay: i * 0.3
+        delay: i * 0.3,
       },
     }),
   }
@@ -141,37 +172,41 @@ export default function Chat() {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground p-4 md:p-8">
       <div className="max-w-2xl mx-auto max-h-screen w-full flex flex-col flex-grow">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="text-3xl">
-              <SiOllama />
+        {messages.length === 0 && (
+          <>
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <div className="text-3xl">
+                  <SiOllama />
+                </div>
+                <div className="text-3xl">+</div>
+                <div className="text-3xl">
+                  <RiNextjsFill />
+                </div>
+              </div>
+              <p className="text-muted-foreground mb-2">
+                This is a{" "}
+                <a href="#" className="underline hover:text-foreground">
+                  sample chatbot
+                </a>{" "}
+                platform built with Next.js + shadcn and Ollama. It uses Python
+                Flask as the backend and docker to containerize the entire
+                platform
+              </p>
+              <p className="text-muted-foreground">
+                You can check out my other projects by visiting my{" "}
+                <a
+                  href="https://github.com/Giyanellow"
+                  className="underline hover:text-foreground"
+                >
+                  github
+                </a>
+                .
+              </p>
             </div>
-            <div className="text-3xl">+</div>
-            <div className="text-3xl">
-              <RiNextjsFill />
-            </div>
-          </div>
-          <p className="text-muted-foreground mb-2">
-            This is a{" "}
-            <a href="#" className="underline hover:text-foreground">
-              sample chatbot
-            </a>{" "}
-            platform built with Next.js + shadcn and Ollama. It uses Python
-            Flask as the backend and docker to containerize the entire platform
-          </p>
-          <p className="text-muted-foreground">
-            You can check out my other projects by visiting my{" "}
-            <a
-              href="https://github.com/Giyanellow"
-              className="underline hover:text-foreground"
-            >
-              github
-            </a>
-            .
-          </p>
-        </div>
-
+          </>
+        )}
         {/* Messages */}
         <div className="flex-grow overflow-y-auto h-[100px] space-y-4 mb-4">
           {messages.map((message) => (
@@ -237,6 +272,15 @@ export default function Chat() {
             </div>
           </form>
           <ModeToggle />
+          <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          className="bg-primary-foreground text-primary hover:bg-secondary/90"
+          onClick={handleNewSession}
+          >
+            <X className="h-[1.2rem] w-[1.2rem]" />
+          </Button>
         </div>
       </div>
     </div>
