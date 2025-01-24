@@ -17,9 +17,10 @@
         "name": "next"
       }
     ],
+    "baseUrl": "./",
     "paths": {
-      "@/*": ["./*"],
-      "components/*": ["@/*"],
+      "@/*": ["./*"], // Ensure this maps to the root directory
+      "@/components/*": ["components/*"] // Ensure this maps to the components directory
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

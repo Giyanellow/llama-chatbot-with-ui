@@ -1,6 +1,6 @@
 "use client"
 import { useState, useRef, useEffect } from "react"
-import { Paperclip, ArrowUp, X } from "lucide-react"
+import { ArrowUp, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SiOllama } from "react-icons/si"
 import { RiNextjsFill } from "react-icons/ri"
@@ -17,13 +17,9 @@ const cookies = new Cookies()
 export default function Chat() {
   const [input, setInput] = useState("")
   const [isReplying, setIsReplying] = useState(false)
-  const [messages, setMessages] = useState(() => {
-    const savedMessages = localStorage.getItem("chatMessages")
-    return savedMessages ? JSON.parse(savedMessages) : []
-  })
-  const messagesEndRef = useRef(null)
+  const [messages, setMessages] = useState<{ content: string; role: string; id: number }[]>([])
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isMounted, setIsMounted] = useState(false)
-  const [sessionID, setSessionID] = useState("")
 
   const apiClient = axios.create({
     baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
@@ -44,7 +40,6 @@ export default function Chat() {
       const sessionId = response.data.session_id
       if (sessionId) {
         cookies.set("session_id", sessionId, { path: "/" })
-        setSessionID(sessionId)
         setMessages([])
       }
     } catch (error) {
@@ -91,6 +86,11 @@ export default function Chat() {
       subtitle: "after the Harry Potter books?",
     },
   ]
+
+  const handlePromptClick = (message: string) => {
+    setInput(message)
+    handleSubmit(new Event("submit") as unknown as React.FormEvent)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -143,7 +143,7 @@ export default function Chat() {
   }
 
   const dotVariants = {
-    animate: (i) => ({
+    animate: (i: number) => ({
       opacity: [0, 1, 0],
       transition: {
         duration: 2,
