@@ -88,6 +88,8 @@ def get_message_history():
     except ValueError as e:
         logger.error(f"Error: {e}")
         return jsonify({"error": f"Invalid session_id: {session_id}"}), 500
+    
+    
 @app.route('/api/send_message', methods=['POST', 'OPTIONS'])
 def send_message():
     """Send a message to the chatbot
