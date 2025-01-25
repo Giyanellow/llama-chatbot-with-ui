@@ -34,6 +34,22 @@ Ensure you have the following installed before proceeding:
 
 ---
 
+## Customization
+- Model to use: `backend/.env`
+```bash
+OLLAMA_MODEL=[put here desired model to use]
+```
+```bash
+ollama pull [pick a specific model that ollama supports]
+```
+- System Prompt: `backend/utils/chat.py`
+```python
+system_prompt="""
+[put here your own custom prompt]
+"""
+```
+---
+
 ## Installation and Usage
 
 ### Ollama Setup
