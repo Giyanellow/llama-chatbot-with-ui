@@ -1,4 +1,6 @@
 # Self-Hosting an LLM with Ollama and Llama 3.2
+![Screenshot of the application](./screenshot.png)
+<p align="center">Inspiration from <a href="https://chat.vercel.ai/">chat.vercel.ai</a></p>
 
 ## About
 
