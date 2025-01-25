@@ -44,6 +44,12 @@ chatbot = ChatBot()
 
 @app.route('/api/get_session_id', methods=['GET', 'OPTIONS'])
 def get_session_id():
+    """Get a session ID for the user
+
+    Returns:
+        Response: JSON response containing the session ID
+    """
+    
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -57,6 +63,12 @@ def get_session_id():
 
 @app.route('/api/get_message_history', methods=['POST', 'OPTIONS'])
 def get_message_history():
+    """Get the message history for the user
+
+    Returns:
+        Response: JSON response containing the message history
+    """
+    
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -75,10 +87,16 @@ def get_message_history():
         return _corsify_actual_response(make_response(jsonify({"messages": messages}))), 200
     except ValueError as e:
         logger.error(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({"error": f"Invalid session_id: {session_id}"}), 500
 @app.route('/api/send_message', methods=['POST', 'OPTIONS'])
 def send_message():
+    """Send a message to the chatbot
+    
+    Returns:
+        Response: JSON response containing the chatbot's response
+        
+    """
+    
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
 
@@ -89,14 +107,21 @@ def send_message():
     if not prompt:
         return jsonify({"error": "Missing 'prompt' parameter"}), 400
 
+    if not session_id:
+        return jsonify({"error": "Missing 'session_id' parameter"}), 400
+
+    if 'session_id' not in session or session['session_id'] != session_id:
+        return jsonify({"error": f"Invalid session_id: {session_id}"}), 400
+
     try:
         logger.info(f"Current Session: {session}")
         response = chatbot.run_with_history(prompt, session_id)
+        response_message = response if isinstance(response, str) else str(response)
 
-        return _corsify_actual_response(make_response(jsonify({"message": response})))
+        return _corsify_actual_response(make_response(jsonify({"message": response_message})))
     except ValueError as e:
         logger.error(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"An error has occurred: {e}"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
