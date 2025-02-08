@@ -3,6 +3,8 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { File, ArrowLeft } from "lucide-react"
+import Upload from "@/components/upload"
 
 interface SidebarItem {
   id: string
@@ -30,31 +32,39 @@ export default function CustomSidebar() {
   }
 
   return (
-    <div className={`h-screen border border-gray-700 transition-all duration-300 ease-in-out ${isWide ? "w-1/3" : "w-1/6"}`}>
-      <div className="p-4">
-        <Button onClick={toggleWidth} className="mb-4">
-          {isWide ? "Narrow Sidebar" : "Widen Sidebar"}
-        </Button>
-        <div className="space-y-2">
-          {sidebarItems.map((item) => (
+    <div
+      className={`h-screen border bg-neutral-900 transition-all duration-500 ease-in-out ${
+        isWide ? "w-1/4" : "w-1/12"
+      }`}
+    >
+      <div className="p-2">
+        {!isWide ? (
+          <>
+            {" "}
+            <span className="text-neutral-400 p-3 text-sm font-semibold block">
+              Features
+            </span>
             <Button
-              key={item.id}
-              onClick={() => handleItemClick(item)}
-              variant="ghost"
-              className="w-full justify-start"
+              onClick={toggleWidth}
+              className="p-2 bg-transparent text-white hover:bg-neutral-700 transition-all duration-300 ease-in-out"
             >
-              {item.title}
+              <File width={24} height={24} />
+              Upload Files
             </Button>
-          ))}
-        </div>
+          </>
+        ) : (
+          <>
+            {" "}
+            <Button
+              onClick={toggleWidth}
+              className="p-2 bg-transparent text-white hover:bg-neutral-700 transition-all duration-300 ease-in-out"
+            >
+              <ArrowLeft width={24} height={24} />
+            </Button>
+            <Upload />
+          </>
+        )}
       </div>
-      {selectedItem && isWide && (
-        <div className="p-4 bg-white rounded-lg shadow mt-4 mx-2">
-          <h3 className="text-lg font-semibold mb-2">{selectedItem.title}</h3>
-          {selectedItem.content}
-        </div>
-      )}
     </div>
   )
 }
-

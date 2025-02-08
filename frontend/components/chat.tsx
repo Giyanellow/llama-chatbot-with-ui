@@ -167,87 +167,85 @@ export default function Chat() {
   )
 
   return (
-    <>
-      <div className="max-h-screen bg-background text-foreground items-center justify-center w-full">
-        <div className="max-w-2xl mx-auto w-full p-10 sm:px-0 md:p-0 flex flex-col flex-grow">
-          {messages.length === 0 && <ChatHeader />}
-          {/* Messages */}
-          <div className="h-[350px] overflow-y-auto space-y-4 mb-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  "flex p-4 rounded-lg w-fit max-w-[70%] whitespace-pre-wrap",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground ml-auto mr-3"
-                    : "bg-secondary text-secondary-foreground ml-3"
-                )}
-              >
-                <MarkdownRenderer content={message.content} />
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-            {isReplying && (
-              <div className="flex p-4 rounded-lg w-fit">
-                <AnimatedDots />
-              </div>
-            )}
-          </div>
-
-          {/* Example Prompts Grid */}
-          {messages.length === 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              {examplePrompts.map((prompt, i) => (
-                <button
-                  key={i}
-                  className="p-4 text-left rounded-2xl border border-border hover:bg-accent hover:text-accent-foreground transition-colors"
-                  onClick={() =>
-                    handlePromptClick(`${prompt.title} ${prompt.subtitle}`)
-                  }
-                >
-                  <div className="text-foreground">{prompt.title}</div>
-                  <div className="text-muted-foreground">{prompt.subtitle}</div>
-                </button>
-              ))}
+    <div className="h-full bg-background text-foreground items-center justify-center w-full">
+      <div className="max-w-2xl mx-auto w-full p-10 sm:px-0 md:p-0 flex flex-col flex-grow items-center justify-center h-full">
+        {messages.length === 0 && <ChatHeader />}
+        {/* Messages */}
+        <div className="h-[350px] overflow-y-auto space-y-4 mb-4">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={cn(
+                "flex p-4 rounded-lg w-fit max-w-[70%] whitespace-pre-wrap",
+                message.role === "user"
+                  ? "bg-primary text-primary-foreground ml-auto mr-3"
+                  : "bg-secondary text-secondary-foreground ml-3"
+              )}
+            >
+              <MarkdownRenderer content={message.content} />
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+          {isReplying && (
+            <div className="flex p-4 rounded-lg w-fit">
+              <AnimatedDots />
             </div>
           )}
+        </div>
 
-          {/* Input Form */}
-          <div className="flex flex-row gap-3 items-center flex-shrink-0">
-            <form
-              onSubmit={handleSubmit}
-              className="relative flex flex-row w-full items-center"
-            >
-              <Input
-                value={input}
-                onChange={handleInputChange}
-                placeholder="Send a message..."
-                className="w-full h-11 pr-24"
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <Button
-                  type="submit"
-                  size="icon"
-                  className="bg-primary h-7 w-7 text-primary-foreground hover:bg-primary/90"
-                  disabled={!input}
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-              </div>
-            </form>
-            <ModeToggle />
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="bg-primary-foreground text-primary hover:bg-secondary/90"
-              onClick={handleNewSession}
-            >
-              <X className="h-[1.2rem] w-[1.2rem]" />
-            </Button>
+        {/* Example Prompts Grid */}
+        {messages.length === 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {examplePrompts.map((prompt, i) => (
+              <button
+                key={i}
+                className="p-4 text-left rounded-2xl border border-border hover:bg-accent hover:text-accent-foreground transition-colors"
+                onClick={() =>
+                  handlePromptClick(`${prompt.title} ${prompt.subtitle}`)
+                }
+              >
+                <div className="text-foreground">{prompt.title}</div>
+                <div className="text-muted-foreground">{prompt.subtitle}</div>
+              </button>
+            ))}
           </div>
+        )}
+
+        {/* Input Form */}
+        <div className="flex flex-row gap-3 items-center flex-shrink-0">
+          <form
+            onSubmit={handleSubmit}
+            className="relative flex flex-row w-full items-center"
+          >
+            <Input
+              value={input}
+              onChange={handleInputChange}
+              placeholder="Send a message..."
+              className="w-full h-11 pr-24"
+            />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <Button
+                type="submit"
+                size="icon"
+                className="bg-primary h-7 w-7 text-primary-foreground hover:bg-primary/90"
+                disabled={!input}
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+            </div>
+          </form>
+          <ModeToggle />
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            className="bg-primary-foreground text-primary hover:bg-secondary/90"
+            onClick={handleNewSession}
+          >
+            <X className="h-[1.2rem] w-[1.2rem]" />
+          </Button>
         </div>
       </div>
-    </>
+    </div>
   )
 }
