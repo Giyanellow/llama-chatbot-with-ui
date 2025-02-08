@@ -61,11 +61,9 @@ export default function UploadPage() {
         setSuccess(response.success)
       }
     } catch (error) {
-      setError({ error })
+      setError("Kindly try again later.")
+      console.log(error)
     }
-    // Handle file upload logic here
-    setSuccess("File uploaded successfully.")
-    setError(null)
   }
 
   const generatePreview = (file: File) => {

@@ -46,7 +46,7 @@ export default function CustomSidebar() {
             </span>
             <Button
               onClick={toggleWidth}
-              className="p-2 bg-transparent text-white hover:bg-neutral-700 transition-all duration-300 ease-in-out"
+              className="bg-transparent text-white hover:bg-neutral-700 transition-all duration-300 ease-in-out"
             >
               <File width={24} height={24} />
               Upload Files
