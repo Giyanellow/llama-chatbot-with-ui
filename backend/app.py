@@ -1,129 +1,119 @@
 import os
 import uuid
 import logging
-from flask import Flask, Response, jsonify, make_response, request, session, g
-from flask_cors import CORS
-from flask_session import Session
-from utils.chat import ChatBot
+from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi_sessions.backends.implementations import InMemoryBackend
+from fastapi_sessions.frontends.implementations import SessionCookie, CookieParameters
+from fastapi_sessions.session_verifier import SessionVerifier
 from dotenv import load_dotenv
+from session import SessionData, verifier, backend, cookie
+from utils.chat import ChatBot, MessageHistoryDB
 
+# Load environment variables
 load_dotenv(".env")
 
+# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY")
-CORS_ORIGINS = os.getenv("CORS_ORIGINS")
+logger.info("Starting application...")
 
-# Configure server-side session
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_FILE_DIR'] = './flask_session'
-app.config['SESSION_PERMANENT'] = True
-app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_KEY_PREFIX'] = 'session:'
-Session(app)
+app = FastAPI()
 
-CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": CORS_ORIGINS}})
+# Load configuration from environment or a config file
+cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+logger.info(f"CORS origins: {cors_origins}")
 
-def _build_cors_preflight_response():
-    response = make_response()
-    response.headers.add("Access-Control-Allow-Origin", CORS_ORIGINS)
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-def _corsify_actual_response(response):
-    response.headers.add("Access-Control-Allow-Origin", CORS_ORIGINS)
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
+chatbot_instance = ChatBot()
 
-# initialize chatbot class once
-chatbot = ChatBot()
-
-@app.route('/api/get_session_id', methods=['GET', 'OPTIONS'])
-def get_session_id():
-    """Get a session ID for the user
-
-    Returns:
-        Response: JSON response containing the session ID
-    """
+@app.get("/api/create_session")
+async def create_session(response: JSONResponse):
+    logger.info("Creating new session...")
+    session_id = uuid.uuid4()
+    session_data = SessionData(session_id=str(session_id))
     
-    if request.method == 'OPTIONS':
-        return _build_cors_preflight_response()
+    await backend.create(session_id, session_data)
+    cookie.attach_to_response(response, session_id)
+    logger.info(f"Sending session_id: {session_id}")
     
-    if 'session_id' not in session:
-        session['session_id'] = str(uuid.uuid4())
-        session.permanent = True  # Make the session permanent
-    
-    logger.info(f"Sending session_id: {session['session_id']}")
+    return {"session_id": str(session_id)}
 
-    return _corsify_actual_response(make_response(jsonify({"session_id": session['session_id']})))
+from fastapi.responses import JSONResponse
 
-@app.route('/api/get_message_history', methods=['POST', 'OPTIONS'])
-def get_message_history():
-    """Get the message history for the user
-
-    Returns:
-        Response: JSON response containing the message history
-    """
-    
-    if request.method == 'OPTIONS':
-        return _build_cors_preflight_response()
-    
-    data = request.json
+@app.post("/api/handle_old_session", dependencies=[Depends(cookie)])
+async def handle_old_session(request: Request, session_data: SessionData = Depends(verifier)):
+    data = await request.json()
+    logger.info(f"Received request: {data}")
     session_id = data.get('session_id')
     
     if not session_id:
-        return jsonify({"error": "Missing 'session_id' parameter"}), 400
+        logger.error("Missing 'session_id' parameter")
+        raise HTTPException(status_code=400, detail="Missing 'session_id' parameter")
+    
+    # Optionally retrieve existing session or create new
+    session_data = SessionData(session_id=session_id)
+    await backend.create(session_id, session_data)
+    
+    # Create a JSONResponse and attach the cookie to it
+    response = JSONResponse({"messages": []})
+    cookie.attach_to_response(response, session_id)
     
     try:
         logger.info(f"Fetching message history for session_id: {session_id}")
-        messages = chatbot.get_message_history(session_id)
+        db = MessageHistoryDB(session_id)
+        messages = db.retrieve_messages()
         if not messages:
-            return _corsify_actual_response(make_response(jsonify({"messages": [], "info": "No messages found"}))), 200
+            logger.info("No messages found")
+            response = JSONResponse({"messages": [], "info": "No messages found"})
+        else:
+            response = JSONResponse({"messages": messages})
         
-        return _corsify_actual_response(make_response(jsonify({"messages": messages}))), 200
+        cookie.attach_to_response(response, session_id)
+        return response
+    
     except ValueError as e:
         logger.error(f"Error: {e}")
-        return jsonify({"error": f"Invalid session_id: {session_id}"}), 500
-    
-    
-@app.route('/api/send_message', methods=['POST', 'OPTIONS'])
-def send_message():
-    """Send a message to the chatbot
-    
-    Returns:
-        Response: JSON response containing the chatbot's response
-        
-    """
-    
-    if request.method == 'OPTIONS':
-        return _build_cors_preflight_response()
+        raise HTTPException(status_code=500, detail=f"Invalid session_id: {session_id}")
 
-    data = request.get_json()
+
+@app.post("/api/send_message", dependencies=[Depends(cookie)])
+async def send_message(request: Request, session_data: SessionData = Depends(verifier)):
+    data = await request.json()
     prompt = data.get('message')
-    session_id = data.get('session_id')
     
-    if not prompt:
-        return jsonify({"error": "Missing 'prompt' parameter"}), 400
-
-    if not session_id:
-        return jsonify({"error": "Missing 'session_id' parameter"}), 400
-
-    if 'session_id' not in session or session['session_id'] != session_id:
-        return jsonify({"error": f"Invalid session_id: {session_id}"}), 400
-
+    # get session_id from cookie
+    session_id = session_data.session_id
+    
+    if not prompt or not session_id:
+        logger.error("Missing required parameters")
+        raise HTTPException(status_code=400, detail="Missing required parameters")
+    
+    if session_data.session_id != session_id:
+        logger.error(f"Invalid session_id: {session_id}")
+        raise HTTPException(status_code=400, detail=f"Invalid session_id: {session_id}")
+    
     try:
-        logger.info(f"Current Session: {session}")
-        response = chatbot.run_with_history(prompt, session_id)
+        logger.info(f"Current Session: {session_data.session_id}")
+        response = chatbot_instance.run(prompt, session_id)
         response_message = response if isinstance(response, str) else str(response)
-
-        return _corsify_actual_response(make_response(jsonify({"message": response_message})))
+        return {"message": response_message}
+    
     except ValueError as e:
         logger.error(f"Error: {e}")
-        return jsonify({"error": f"An error has occurred: {e}"}), 500
+        raise HTTPException(status_code=500, detail=f"An error has occurred: {e}")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    logger.info("Running application...")
+    import uvicorn
+    uvicorn.run(app, host="localhost", port=8000, log_level="info")

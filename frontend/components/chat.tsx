@@ -28,7 +28,7 @@ export default function Chat() {
 
   const handleNewSession = async () => {
     try {
-      const response = await apiClient.get("api/get_session_id")
+      const response = await apiClient.get("api/create_session")
       console.log(
         "Received new session ID from backend",
         response.data.session_id
@@ -36,7 +36,6 @@ export default function Chat() {
       // Set session_id cookie
       const sessionId = response.data.session_id
       if (sessionId) {
-        cookies.set("session_id", sessionId, { path: "/" })
         setMessages([])
       }
     } catch (error) {
@@ -46,7 +45,7 @@ export default function Chat() {
 
   const handleOldSession = async () => {
     try {
-      const response = await apiClient.post("api/get_message_history", {
+      const response = await apiClient.post("api/handle_old_session", {
         session_id: cookies.get("session_id"),
       })
       console.log("Response of request", response)
@@ -125,6 +124,8 @@ export default function Chat() {
             content: "I'm sorry, I don't understand that.",
           },
         ])
+
+        setIsReplying(false)
       }
     }
   }
@@ -152,7 +153,7 @@ export default function Chat() {
   }
 
   const AnimatedDots = () => (
-    <div className="flex p-4 rounded-lg w-fit space-x-2 bg-secondary text-secondary-foreground ml-3">
+    <div className="flex p-4 rounded-lg w-fit space-x-2 text-secondary-foreground ml-3">
       {[...Array(3)].map((_, i) => (
         <motion.div
           key={i}
@@ -167,19 +168,52 @@ export default function Chat() {
   )
 
   return (
-    <div className="h-full bg-background text-foreground items-center justify-center w-full">
-      <div className="max-w-2xl mx-auto w-full p-10 sm:px-0 md:p-0 flex flex-col flex-grow items-center justify-center h-full">
-        {messages.length === 0 && <ChatHeader />}
+    <div className="flex flex-col h-screen bg-background text-foreground p-4 md:p-8">
+      <div className="max-w-2xl mx-auto max-h-screen w-full flex flex-col flex-grow">
+        {messages.length === 0 && (
+          <>
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <div className="text-3xl">
+                  <SiOllama />
+                </div>
+                <div className="text-3xl">+</div>
+                <div className="text-3xl">
+                  <RiNextjsFill />
+                </div>
+              </div>
+              <p className="text-muted-foreground mb-2">
+                This is a{" "}
+                <a href="#" className="underline hover:text-foreground">
+                  sample chatbot
+                </a>{" "}
+                platform built with Next.js + shadcn and Ollama. It uses FastAPI as the backend and docker to containerize the entire
+                platform
+              </p>
+              <p className="text-muted-foreground">
+                You can check out my other projects by visiting my{" "}
+                <a
+                  href="https://github.com/Giyanellow"
+                  className="underline hover:text-foreground"
+                >
+                  github
+                </a>
+                .
+              </p>
+            </div>
+          </>
+        )}
         {/* Messages */}
-        <div className="h-[350px] overflow-y-auto space-y-4 mb-4">
+        <div className="flex-grow overflow-y-auto h-[100px] space-y-4 mb-4">
           {messages.map((message) => (
             <div
               key={message.id}
               className={cn(
-                "flex p-4 rounded-lg w-fit max-w-[70%] whitespace-pre-wrap",
+                "flex p-4 rounded-lg w-fit whitespace-pre-wrap",
                 message.role === "user"
-                  ? "bg-primary text-primary-foreground ml-auto mr-3"
-                  : "bg-secondary text-secondary-foreground ml-3"
+                  ? "bg-primary text-primary-foreground ml-auto mr-3 max-w-[70%] "
+                  : "text-secondary-foreground ml-3"
               )}
             >
               <MarkdownRenderer content={message.content} />
