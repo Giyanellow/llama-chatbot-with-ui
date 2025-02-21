@@ -40,31 +40,34 @@ export default function UploadPage() {
 
   const handleFileSubmit = async () => {
     if (!file) {
-      setError("No file selected.")
-      return
+        setError("No file selected.");
+        return;
     }
 
     try {
-      const formData = new FormData()
-      formData.append("file", file)
-      const response = await fetch("http://localhost:3000/upload", {
-        method: "POST",
-        body: formData,
-      })
-      if (!response.ok) {
-        throw new Error("Failed to upload file")
-      }
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await apiClient.post("api/upload", formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        });
 
-      if (response.error) {
-        throw new Error(response.error)
-      } else if (response.success) {
-        setSuccess(response.success)
-      }
+        if (response.status !== 200) {
+            throw new Error("Failed to upload file");
+        }
+
+        const data = await response.data;
+        if (data.error) {
+            throw new Error(data.error);
+        } else {
+            setSuccess(data.message);
+        }
     } catch (error) {
-      setError("Kindly try again later.")
-      console.log(error)
+        setError("Kindly try again later.");
+        console.log(error);
     }
-  }
+};
 
   const generatePreview = (file: File) => {
     const reader = new FileReader()

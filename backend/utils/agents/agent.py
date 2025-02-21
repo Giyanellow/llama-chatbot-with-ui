@@ -1,11 +1,15 @@
+import code
 from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END, MessagesState
 from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode, tools_condition
+
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import SystemMessage, AIMessage, HumanMessage
-from . import llm  # Your LangGraph-compatible LLM
-from .tools import search
+
+from . import llm 
+from .tools import code_retriever_tool, doc_retriever_tool, csv_retriever_tool
 
 # Define your system prompt once
 system_prompt = """
@@ -22,20 +26,36 @@ Output:
     Always format your output in proper markdown format.
 """
 
+tools = [code_retriever_tool, doc_retriever_tool, csv_retriever_tool]
+llm_with_tools = llm.bind_tools(tools)
+
 # The state holds all previous messages
 class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 def call_model(state: MessagesState):
     messages = [SystemMessage(content=system_prompt)] + state["messages"]
-    response = llm.invoke(messages)
+    response = llm_with_tools.invoke(messages)
     return {"messages": response}
+
+def tools_handler(state: State):
+    # Can be used to handle post processing of tool output
+    return state
 
 
 # Build the graph, adding an input parameter for user input
 state_graph = StateGraph(State)
 state_graph.add_node("chatbot", call_model)
-state_graph.add_edge(START, "chatbot")
+
+tool_node = ToolNode
+state_graph.add_conditional_edges(
+    "chatbot",
+    tools_condition
+)
+
+state_graph.add_node("tools", tools_handler)
+state_graph.add_edge("tools", "chatbot")
+state_graph.set_entry_point("chatbot")
 state_graph.add_edge("chatbot", END)
 
 # Use MemorySaver to persist state between runs (if desired)
@@ -56,6 +76,12 @@ def stream_graph_updates(user_input: str):
 
 # Example usage (you could also integrate this into a webserver or CLI loop)
 if __name__ == "__main__":
+    from IPython.display import Image, display
+    try:
+        display(Image(agent.get_graph().draw_mermaid_png()))
+    except Exception:
+        # This requires some extra dependencies and is optional
+        pass
     while True:
         user_input = input("User: ")
         if user_input.lower() in ["exit", "quit", "q"]:

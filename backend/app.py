@@ -1,13 +1,14 @@
 import os
 import uuid
 import logging
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import FastAPI, Request, HTTPException, Depends, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_sessions.backends.implementations import InMemoryBackend
 from fastapi_sessions.frontends.implementations import SessionCookie, CookieParameters
 from fastapi_sessions.session_verifier import SessionVerifier
 from dotenv import load_dotenv
+from utils.agents.embeddings import VectorStore
 from session import SessionData, verifier, backend, cookie
 from utils.chat import ChatBot, MessageHistoryDB
 
@@ -36,6 +37,7 @@ app.add_middleware(
 )
 
 chatbot_instance = ChatBot()
+vector_db = VectorStore()
 
 @app.get("/api/create_session")
 async def create_session(response: JSONResponse):
@@ -48,8 +50,6 @@ async def create_session(response: JSONResponse):
     logger.info(f"Sending session_id: {session_id}")
     
     return {"session_id": str(session_id)}
-
-from fastapi.responses import JSONResponse
 
 @app.post("/api/handle_old_session", dependencies=[Depends(cookie)])
 async def handle_old_session(request: Request, session_data: SessionData = Depends(verifier)):
@@ -86,7 +86,6 @@ async def handle_old_session(request: Request, session_data: SessionData = Depen
         logger.error(f"Error: {e}")
         raise HTTPException(status_code=500, detail=f"Invalid session_id: {session_id}")
 
-
 @app.post("/api/send_message", dependencies=[Depends(cookie)])
 async def send_message(request: Request, session_data: SessionData = Depends(verifier)):
     data = await request.json()
@@ -112,6 +111,34 @@ async def send_message(request: Request, session_data: SessionData = Depends(ver
     except ValueError as e:
         logger.error(f"Error: {e}")
         raise HTTPException(status_code=500, detail=f"An error has occurred: {e}")
+
+# Route for file uploads
+@app.post("/api/upload", dependencies=[Depends(cookie)])
+async def upload_file(file: UploadFile = File(...), session_data: SessionData = Depends(verifier)):
+    session_id = session_data.session_id
+    if not session_id:
+        logger.error("Missing session_id")
+        raise HTTPException(status_code=400, detail="Missing session_id")
+    
+    logger.info(f"Received file: {file.filename}")
+    
+    UPLOAD_FOLDER = "uploads"
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+    
+    # Process the file (e.g., save it to disk, read its contents, etc.)
+    file_location = f"uploads/{file.filename}"
+    with open(file_location, "wb") as f:
+        f.write(await file.read())
+    
+    if file.filename.endswith(".pdf"):
+        vector_db.add_document_pdf(file_location)
+    elif file.filename.endswith(".csv"):
+        vector_db.add_document_csv(file_location)
+    else:
+        vector_db.add_document_code(file_location)
+    
+    return {"message": f"Received file: {file.filename}"}
 
 if __name__ == "__main__":
     logger.info("Running application...")

@@ -171,5 +171,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Flask
-flask_session/
+# uploads
+uploads/
